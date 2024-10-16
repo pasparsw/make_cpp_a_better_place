@@ -1,3 +1,6 @@
 .vscode
 *.so
-languages_comparison/cpp/app
+producer_consumer
+lib_user
+languages_comparison/cpp_front/producer_consumer.cpp
+languages_comparison/cpp_front/lib_user.cpp

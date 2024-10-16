@@ -1,0 +1,11 @@
+#include "cpp_functionality.h"
+
+main: () = {
+    p1: Point = (12, 24);
+    p2: Point = (36, 48);
+    adding_result: const int = Add(p1.x, p2.x);
+    comparison_result: const bool = IsEqual(p1, p2);
+
+    std::cout << "adding_result = (adding_result)$" << std::endl;
+    std::cout << "comparison_result = (comparison_result)$" << std::endl;
+}

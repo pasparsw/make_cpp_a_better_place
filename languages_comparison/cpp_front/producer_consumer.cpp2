@@ -1,0 +1,137 @@
+// mutex for shared resource access synchronization
+static std::shared_mutex mtx;
+// condition variable for threads execution flow synchronization
+static std::condition_variable_any cv;
+// atomic variable to share a flag between the threads
+static std::atomic<bool> is_finished = false;
+// interface class
+WorkerInterface: type = {
+    operator=: (virtual move this) = {}
+    Run: (virtual inout this);
+}
+// alias for a type
+WorkerPtr: type == std::shared_ptr<WorkerInterface>;
+// templated alias for a type
+SharedContainerPtr: <T> type == std::shared_ptr<std::vector<T>>;
+// template class definition
+Producer: <T> type = {
+    // inheritance
+    this: WorkerInterface;
+    // class constructor and members initialization
+    // together with passing arguments by const reference and non-const reference
+    operator=: (out this, in_ref source_data: std::array<T, 3>, copy shared_container: SharedContainerPtr<T>) = {
+        WorkerInterface = ();
+        source_data_ = source_data;
+        shared_container_ = shared_container;
+        // if statement
+        if !shared_container_ {
+            std::cout << "Given shared_container is a nullptr!" << std::endl;
+        }
+    }
+    Run: (override inout this) = {
+        // indexed for loop
+        for 0..<10000U do (i) {
+            // range based for loop
+            for source_data_ do (element) {
+                // print statement
+                std::cout << "Putting (element)$ to the shared container" << std::endl;
+                {
+                    // blocking reading and writing from/to shared container
+                    lock: std::unique_lock<std::shared_mutex> = (mtx);
+                    // appending element to a variable-length array
+                    shared_container_*.push_back(element);
+                }
+                // unblocking all waiting threads
+                cv.notify_all();
+            }
+        }
+        is_finished = true;
+        cv.notify_all();
+        std::cout << "Producer done" << std::endl;
+    }
+    // private class members
+    source_data_: std::array<T, 3>;
+    shared_container_: SharedContainerPtr<T>;
+}
+
+Consumer: <T> type = {
+    this: WorkerInterface;
+    operator=: (out this, id: u8, copy shared_container: SharedContainerPtr<T>) = {
+        WorkerInterface = ();
+        id_ = id;
+        last_size_ = shared_container*.size();
+        shared_container_ = shared_container;
+
+        if !shared_container_ {
+            std::cout << "Given shared_container is a nullptr!" << std::endl;
+        }
+    }
+    Run: (override inout this) = {
+        // infinite while loop
+        while true {
+            // blocking writing to the shared container
+            lock: std::shared_lock<std::shared_mutex> = (mtx);
+            // waiting for the input from another thread
+            cv.wait(lock, :() -> bool = { return shared_container_*.size() > last_size_ || is_finished; });
+            _ = lock;
+            if is_finished {
+                break;
+            }
+            std::cout << "Consumer (id_)$ noticed new element: (shared_container_*.back())$" << std::endl;
+            last_size_ = shared_container_*.size();
+        }
+
+        std::cout << "Consumer (id_)$ done" << std::endl;
+    }
+
+    id_: u8;
+    last_size_: std::size_t;
+    shared_container_: SharedContainerPtr<T>;
+}
+// enum definition
+WorkerType: @enum<u8> type = {
+    kProducer := 0U;
+    kConsumer := 1U;
+}
+// template function with a compile time argument and variadic arguments
+CreateWorker: <worker_type: u8, Args...: type>(args...: Args) -> WorkerPtr = {
+    // compile time if statement excluding constructors of the classes to which
+    // current arguments don't fit - an ordinary runtime if would cause a compilation error
+    // because Producer's and Consumer's constructors have different signatures
+    if constexpr worker_type == 0U {
+        // dynamic memory allocation of the polymorphic type
+        return cpp2::shared.new<Producer<std::string>>(args...);
+    }
+    else if constexpr worker_type == 1U {
+        return cpp2::shared.new<Consumer<std::string>>(args...);
+    }
+    else {
+        std::cout << "Unsupported worker type: (worker_type)$" << std::endl;
+    }
+}
+// application entry point
+main: () = {
+    // start measuring execution time
+    start: const _ = std::chrono::high_resolution_clock::now();
+    // separate scope to not have to call wait() on futures - in the C++ reference
+    // implementation this is handled just by the try scope
+    {
+        // fixed-length array
+        source_data: const std::array<std::string, 3> = ("Hello", "world", "!!!");
+        // variable-length array
+        message_container: std::vector<std::string> = ();
+        shared_container: SharedContainerPtr<std::string> = cpp2::shared.new<std::vector<std::string>>(message_container);
+        // creation of the polymorphic types
+        producer: WorkerPtr = CreateWorker<0U>(source_data, shared_container);
+        first_consumer: WorkerPtr = CreateWorker<1U>(0U, shared_container);
+        second_consumer: WorkerPtr = CreateWorker<1U>(1U, shared_container);
+        // start 3 threads
+        producer_future: _ = std::async(:() = { (producer$)*.Run(); });
+        first_consumer_future: _ = std::async(:() = { (first_consumer$)*.Run(); });
+        second_consumer_future: _ = std::async(:() = { (second_consumer$)*.Run(); });
+        std::cout << shared_container*.size() << std::endl;
+    }
+    // measure execution time and display the result
+    end: const _ = std::chrono::high_resolution_clock::now();
+    std::cout << "Time elapsed: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+}
