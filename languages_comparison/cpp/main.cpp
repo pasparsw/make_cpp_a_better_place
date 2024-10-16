@@ -39,7 +39,7 @@ public:
       shared_container_{shared_container}
     {
         // if statement
-        if (!shared_container) {
+        if (!shared_container_) {
             // error reporting by throwing an exception
             throw std::runtime_error("Given shared_container is a nullptr!");
         }
@@ -50,7 +50,7 @@ public:
         for (unsigned int i=0U; i<10000U; i++) {
             // range based for loop
             for (const auto &element : source_data_) {
-                // Print statement
+                // print statement
                 std::cout << "Putting " << element << " to the shared container" << std::endl;
                 {
                     // blocking reading and writing from/to the shared container
@@ -149,9 +149,9 @@ int main(int argc, char** argv)
         WorkerPtr first_consumer = CreateWorker<WorkerType::kConsumer>(0U, shared_container);
         WorkerPtr second_consumer = CreateWorker<WorkerType::kConsumer>(1U, shared_container);
         // start 3 threads
-        std::future<void> producer_future = std::async([producer](){ producer->Run(); });
-        std::future<void> first_consumer_future = std::async([first_consumer](){ first_consumer->Run(); });
-        std::future<void> second_consumer_future = std::async([second_consumer](){ second_consumer->Run(); });
+        auto producer_future = std::async([producer](){ producer->Run(); });
+        auto first_consumer_future = std::async([first_consumer](){ first_consumer->Run(); });
+        auto second_consumer_future = std::async([second_consumer](){ second_consumer->Run(); });
     }
     // error handling
     catch (const std::exception &e) {
