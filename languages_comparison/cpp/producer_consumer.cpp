@@ -17,6 +17,7 @@ static std::atomic<bool> is_finished = false;
 // interface class
 class WorkerInterface
 {
+// public class members
 public:
     virtual ~WorkerInterface() = default;
     virtual void Run() = 0;
@@ -81,7 +82,7 @@ public:
       last_size_{shared_container->size()},
       shared_container_{shared_container}
     {
-        if (!shared_container) {
+        if (!shared_container_) {
             throw std::runtime_error("Given shared_container is a nullptr!");
         }
     }
@@ -99,7 +100,6 @@ public:
             std::cout << "Consumer " << static_cast<unsigned>(id_) << " noticed new element: " << shared_container_->back() << std::endl;
             last_size_ = shared_container_->size();
         }
-
         std::cout << "Consumer " << static_cast<unsigned>(id_) << " done" << std::endl;
     }
 

@@ -1,5 +1,6 @@
 .vscode
 *.so
+*.o
 producer_consumer
 lib_user
 languages_comparison/cpp_front/producer_consumer.cpp
