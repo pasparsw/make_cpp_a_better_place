@@ -74,15 +74,15 @@ class Consumer(T) : WorkerInterface
     {
         // infinite while loop
         while (true) {
+            // waiting for the input from another thread
+            if (!(shared_container_.length > last_size_ || is_finished.atomicLoad())) {
+                continue;
+            }
+            if (is_finished.atomicLoad()) {
+                break;
+            }
             // blocking writing to the shared container
             synchronized (mtx) {
-                // waiting for the input from another thread
-                if (!(shared_container_.length > last_size_ || is_finished.atomicLoad())) {
-                    continue;
-                }
-                if (is_finished.atomicLoad()) {
-                    break;
-                }
                 writeln("Consumer ", id_, " noticed new element: ", (*shared_container_)[$-1]);
                 last_size_ = shared_container_.length;
             }
